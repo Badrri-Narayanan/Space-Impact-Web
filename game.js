@@ -62,6 +62,8 @@ let specialCount = 3;
 let lives = 4;
 const maxLives = 7;
 let playerScore = 0;
+let autoFire = false;
+const autoFireInterval = 200;   // ms between shots while fire is held
 const frameDuration = 1000 / 60;   // speeds are tuned in px per frame at 60fps
 const maxDeltaTime = 50;           // caps catch-up after tab switches or stalls
 let frameScale = 1;
@@ -88,7 +90,7 @@ class InputHandler {
                     break;
                 case " ":
                     if (!keys.space.pressed) {
-                        this.level.playerProjectiles.push(new Projectile(true, this.level.player));
+                        this.level.fire();
                         keys.space.pressed = true;
                     }
                     break;
@@ -183,7 +185,7 @@ class InputHandler {
         buttonFire.addEventListener("pointerdown", ()=>{
             if (gameOver || !level.active || gamePause) return;
             if (!keys.space.pressed) {
-                this.level.playerProjectiles.push(new Projectile(true, this.level.player));
+                this.level.fire();
                 keys.space.pressed = true;
             }
         })
@@ -1589,6 +1591,7 @@ class Level {
         this.flag = true;     // prevents index overflow of enemy array
         this.bgStop = false;  // stops background
         this.levelComplete = false;
+        this.autoFireTimer = 0;
 
         // create background and assigns enemy array of the current level
         switch (this.number) {
@@ -1623,6 +1626,11 @@ class Level {
 
         // player update
         if (!this.player.delete) this.player.update(deltaTime);
+
+        if (autoFire && keys.space.pressed && this.active && !this.player.delete) {
+            this.autoFireTimer += deltaTime;
+            if (this.autoFireTimer >= autoFireInterval) this.fire();
+        }
 
         // player projectiles
         this.playerProjectiles.forEach(projectile => projectile.update());
@@ -1876,6 +1884,10 @@ class Level {
         }
 
         this.levelTime += deltaTime;
+    }
+    fire() {
+        this.playerProjectiles.push(new Projectile(true, this.player));
+        this.autoFireTimer = 0;
     }
     swarm(array) {
         array.forEach(object => {
@@ -2983,6 +2995,14 @@ pauseButton.addEventListener("click", () => {
 });
 
 playButton.addEventListener("click", gameStart);
+exitButton.addEventListener("click", gameStart);
+
+const autoFireToggle = document.getElementById("autofire-toggle");
+autoFireToggle.addEventListener("click", () => {
+    autoFire = !autoFire;
+    autoFireToggle.classList.toggle("toggle-on");
+    autoFireToggle.firstElementChild.classList.toggle("toggle-ball-on");
+});
 window.addEventListener("resize", ()=>{
     playButton.style.top = `${bgCanvas.getBoundingClientRect().height - 70}`+"px";
     exitButton.style.top = `${bgCanvas.getBoundingClientRect().height - 70}`+"px";
